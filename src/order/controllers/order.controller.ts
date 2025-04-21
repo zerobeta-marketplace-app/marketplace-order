@@ -3,15 +3,18 @@ import { OrderService } from '../services/order.service';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto';
 import { PaginationDto } from '../dto/pagination.dto';
+import { ApiOperation } from '@nestjs/swagger';
 
 @Controller('orders')
 export class OrderController {
   constructor(private readonly service: OrderService) {}
 
-  @Post()
-  create(@Body() dto: CreateOrderDto) {
+  @Post('checkout')
+  @ApiOperation({ summary: 'Checkout - Create order from cart' })
+  checkout(@Body() dto: CreateOrderDto) {
     return this.service.createOrder(dto);
   }
+  
 
   @Get()
   getOrders(@Query() query: PaginationDto, @Query('buyer') buyer: string) {
@@ -23,3 +26,5 @@ export class OrderController {
     return this.service.updateStatus(+id, dto.status);
   }
 }
+
+

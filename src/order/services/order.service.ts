@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
@@ -15,16 +15,43 @@ export class OrderService {
   ) {}
 
   async createOrder(dto: CreateOrderDto) {
-    const order = this.orderRepo.create({ buyerEmail: dto.buyerEmail, items: dto.items });
+    const referenceNumber = `ORD-${Date.now()}`;
+
+    const totalAmount = dto.items.reduce(
+      (sum, item) => sum + item.quantity * item.price,
+      0
+    );
+
+    const order = this.orderRepo.create({
+      buyerEmail: dto.buyerEmail,
+      referenceNumber,
+      status: 'pending',
+      totalAmount,
+      items: dto.items,
+    });
+
     const savedOrder = await this.orderRepo.save(order);
 
     // Emit Kafka event
-    await this.kafka.produce({
-      topic: 'order.created',
-      messages: [{ value: JSON.stringify(savedOrder) }]
-    });
+  await this.kafka.produce({
+    topic: 'order.created',
+    messages: [
+      {
+        value: JSON.stringify({
+          id: savedOrder.id,
+          referenceNumber: savedOrder.referenceNumber,
+          buyerEmail: savedOrder.buyerEmail,
+          items: savedOrder.items,
+        }),
+      },
+    ],
+  });
 
-    return savedOrder;
+  return {
+    message: 'Order placed successfully',
+    referenceNumber: savedOrder.referenceNumber,
+    order: savedOrder,
+  };
   }
 
   async getOrders(email: string, page = 1, limit = 10) {
@@ -42,13 +69,21 @@ export class OrderService {
     const order = await this.orderRepo.findOne({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
 
+    if (status === 'canceled' && order.status !== 'pending') {
+      throw new BadRequestException('Only pending orders can be canceled');
+    }
+    
     order.status = status;
     await this.orderRepo.save(order);
 
     // Emit Kafka event
     await this.kafka.produce({
       topic: 'order.status-changed',
-      messages: [{ value: JSON.stringify({ orderId, status }) }]
+      messages: [
+        {
+          value: JSON.stringify({ orderId, status }),
+        },
+      ],
     });
 
     return order;
