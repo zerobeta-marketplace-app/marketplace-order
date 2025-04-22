@@ -6,7 +6,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    cors: {
+      origin: '*',               // ✅ allow all origins
+      credentials: true,         // ✅ allow cookies if needed
+    },
+  });
+  
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
   app.connectMicroservice<MicroserviceOptions>({
