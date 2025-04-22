@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { OrderService } from '../services/order.service';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto';
@@ -11,8 +11,10 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @ApiTags('Orders')
+@UseGuards(JwtAuthGuard)
 @Controller('orders')
 export class OrderController {
   constructor(private readonly service: OrderService) {}

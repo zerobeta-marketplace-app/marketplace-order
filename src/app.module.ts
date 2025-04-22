@@ -2,12 +2,18 @@ import { Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { OrderKafkaConsumerService } from './order/kafka/order-consumer.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderModule } from './order/order.module';
 import { redisStore } from 'cache-manager-redis-store';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'beta_marketplace',
+      signOptions: { expiresIn: '1h' },
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => ({
@@ -34,5 +40,6 @@ import { redisStore } from 'cache-manager-redis-store';
   ],
   controllers: [AppController],
   providers: [AppService],
+ 
 })
 export class AppModule {}
